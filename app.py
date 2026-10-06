@@ -12,19 +12,19 @@ from PIL import Image
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="GPX Poster Designer",
-    page_icon="🏃",
+    page_title="Poster Designer",
+    page_icon="🎨",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-st.title("🏃 GPX Poster Designer")
+st.title("Poster Designer")
 st.caption("Upload a GPX file from Strava or Garmin and generate a print-ready B2 poster.")
 
 # ── Session state defaults ────────────────────────────────────────────────────
 DEFAULTS = dict(
-    title="Półmaraton\nGdańsk",
-    date="27.09.26",
+    title="Nazwa\nWydarzenia",
+    date="12.12.2026",
     runner_name="Twoje Imię Nazwisko",
     bib="0000",
     pace="0:00",
@@ -52,6 +52,8 @@ DEFAULTS = dict(
     finish_dot_visible=True,
     finish_dot_size=1.0,
     finish_dot_color="#ffffff",
+    start_label_visible=True,
+    finish_label_visible=True,
 )
 
 for k, v in DEFAULTS.items():
@@ -109,19 +111,23 @@ sb.divider()
 
 # ── Start & Finish Dots ───────────────────────────────────────────────────────
 sb.header("🏁 Start & Finish Dots")
-st.session_state.start_dot_visible = sb.checkbox("Show Start dot",
-                                                   value=st.session_state.start_dot_visible)
-st.session_state.start_dot_size   = sb.slider("Start dot size (×)", 0.2, 4.0,
-                                               value=st.session_state.start_dot_size, step=0.1)
-st.session_state.start_dot_color  = sb.color_picker("Start dot colour",
-                                                      value=st.session_state.start_dot_color)
+st.session_state.start_dot_visible  = sb.checkbox('Show Start dot',
+                                                    value=st.session_state.start_dot_visible)
+st.session_state.start_dot_size    = sb.slider("Start dot size (×)", 0.2, 4.0,
+                                                value=st.session_state.start_dot_size, step=0.1)
+st.session_state.start_dot_color   = sb.color_picker("Start dot colour",
+                                                       value=st.session_state.start_dot_color)
+st.session_state.start_label_visible = sb.checkbox('Show "Start" label',
+                                                     value=st.session_state.start_label_visible)
 
-st.session_state.finish_dot_visible = sb.checkbox("Show Finish dot",
-                                                    value=st.session_state.finish_dot_visible)
-st.session_state.finish_dot_size   = sb.slider("Finish dot size (×)", 0.2, 4.0,
-                                                value=st.session_state.finish_dot_size, step=0.1)
-st.session_state.finish_dot_color  = sb.color_picker("Finish dot colour",
-                                                       value=st.session_state.finish_dot_color)
+st.session_state.finish_dot_visible  = sb.checkbox("Show Finish dot",
+                                                     value=st.session_state.finish_dot_visible)
+st.session_state.finish_dot_size    = sb.slider("Finish dot size (×)", 0.2, 4.0,
+                                                 value=st.session_state.finish_dot_size, step=0.1)
+st.session_state.finish_dot_color   = sb.color_picker("Finish dot colour",
+                                                        value=st.session_state.finish_dot_color)
+st.session_state.finish_label_visible = sb.checkbox('Show "Finish" label',
+                                                      value=st.session_state.finish_label_visible)
 
 sb.divider()
 
@@ -158,6 +164,18 @@ sb.divider()
 sb.header("🖼 Layout")
 st.session_state.border_scale = sb.slider("White border width", 0.0, 3.0,
                                            value=st.session_state.border_scale, step=0.1)
+
+sb.divider()
+
+# ── Preview zoom ──────────────────────────────────────────────────────────────
+sb.header("🔍 Preview Zoom")
+if "preview_zoom" not in st.session_state:
+    st.session_state.preview_zoom = 50
+st.session_state.preview_zoom = sb.slider(
+    "Zoom (%)", 20, 100,
+    value=st.session_state.preview_zoom, step=5,
+    help="Controls the preview resolution. 100% = full B2 width. Does not affect export quality.",
+)
 
 sb.divider()
 if sb.button("↺  Reset all to defaults", use_container_width=True):
@@ -222,22 +240,43 @@ def _collect_kwargs() -> dict:
         start_dot_visible  = ss.start_dot_visible,
         start_dot_size     = ss.start_dot_size,
         start_dot_color    = ss.start_dot_color,
-        finish_dot_visible = ss.finish_dot_visible,
-        finish_dot_size    = ss.finish_dot_size,
-        finish_dot_color   = ss.finish_dot_color,
+        finish_dot_visible   = ss.finish_dot_visible,
+        finish_dot_size      = ss.finish_dot_size,
+        finish_dot_color     = ss.finish_dot_color,
+        start_label_visible  = ss.start_label_visible,
+        finish_label_visible = ss.finish_label_visible,
     )
 
-with st.spinner("Rendering poster…"):
+# Preview resolution scales with zoom slider (base width 500px @ 50%)
+_zoom = st.session_state.preview_zoom / 100
+_prev_w = max(200, round(1000 * _zoom))   # 200–1000 px wide
+_prev_h = round(_prev_w * 707 / 500)
+
+with st.spinner("Rendering preview…"):
     t0 = time.time()
     from poster_race import generate_race_poster_image
     preview_img: Image.Image = generate_race_poster_image(
         track=track,
-        preview_size=(500, 707),
+        preview_size=(_prev_w, _prev_h),
         **_collect_kwargs(),
     )
     elapsed = time.time() - t0
 
-st.image(preview_img, caption=f"Preview (rendered in {elapsed:.1f}s)", use_container_width=True)
+# Centre the poster in the page using columns when zoom < 100%
+# so it doesn't stretch to full page width
+_col_ratio = st.session_state.preview_zoom  # e.g. 50 → [50, 50] columns
+_pad = 100 - _col_ratio
+if _pad > 0:
+    col_poster, col_pad = st.columns([_col_ratio, _pad])
+else:
+    col_poster = st.container()
+
+with col_poster:
+    st.image(
+        preview_img,
+        caption=f"Preview  {st.session_state.preview_zoom}% zoom · rendered in {elapsed:.1f}s",
+        use_container_width=True,
+    )
 
 # ── Export buttons ────────────────────────────────────────────────────────────
 st.subheader("⬇ Export")

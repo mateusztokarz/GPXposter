@@ -176,6 +176,8 @@ def _render_map(track: TrackData, bg: str, color: str,
                 finish_dot_visible: bool = True,
                 finish_dot_size: float = 1.0,
                 finish_dot_color: str = "#ffffff",
+                start_label_visible: bool = True,
+                finish_label_visible: bool = True,
                 ) -> Image.Image:
     """Render the route map as a PIL Image of exactly (w_px × h_px).
 
@@ -242,16 +244,18 @@ def _render_map(track: TrackData, bg: str, color: str,
         sr = max(4, round(base_dot_r * start_dot_size))
         s_rgb = _hex_rgb(start_dot_color)
         draw.ellipse([sx - sr, sy - sr, sx + sr, sy + sr], fill=s_rgb)
-    draw.text((sx + off, sy + off), "Start",
-              font=lbl_font, fill=(255, 255, 255))
+    if start_label_visible:
+        draw.text((sx + off, sy + off), "Start",
+                  font=lbl_font, fill=(255, 255, 255))
 
     # Finish dot
     if finish_dot_visible:
         fr = max(4, round(base_dot_r * finish_dot_size))
         f_rgb = _hex_rgb(finish_dot_color)
         draw.ellipse([fx - fr, fy - fr, fx + fr, fy + fr], fill=f_rgb)
-    draw.text((fx + off, fy - off - label_font_size), "Finish",
-              font=lbl_font, fill=(255, 255, 255))
+    if finish_label_visible:
+        draw.text((fx + off, fy - off - label_font_size), "Finish",
+                  font=lbl_font, fill=(255, 255, 255))
 
     return img
 
@@ -319,6 +323,8 @@ def _render_poster_canvas(
     finish_dot_visible: bool  = True,
     finish_dot_size:    float = 1.0,
     finish_dot_color:   str   = "#ffffff",
+    start_label_visible:  bool = True,
+    finish_label_visible: bool = True,
     # BIB / Pace text colour
     meta_color: str = "#c8dce8",
 ) -> Image.Image:
@@ -374,6 +380,8 @@ def _render_poster_canvas(
         finish_dot_visible=finish_dot_visible,
         finish_dot_size=finish_dot_size,
         finish_dot_color=finish_dot_color,
+        start_label_visible=start_label_visible,
+        finish_label_visible=finish_label_visible,
     )
     canvas.paste(map_img, (0, map_y))
 
@@ -482,7 +490,9 @@ def generate_race_poster(
     finish_dot_visible: bool  = True,
     finish_dot_size:    float = 1.0,
     finish_dot_color:   str   = "#ffffff",
-    meta_color:         str   = "#c8dce8",
+    start_label_visible:  bool = True,
+    finish_label_visible: bool = True,
+    meta_color:           str  = "#c8dce8",
 ) -> Path:
     output_path = Path(output_path)
     img = _render_poster_canvas(
@@ -501,6 +511,8 @@ def generate_race_poster(
         start_dot_size=start_dot_size, start_dot_color=start_dot_color,
         finish_dot_visible=finish_dot_visible,
         finish_dot_size=finish_dot_size, finish_dot_color=finish_dot_color,
+        start_label_visible=start_label_visible,
+        finish_label_visible=finish_label_visible,
         meta_color=meta_color,
     )
     suffix = output_path.suffix.lower()

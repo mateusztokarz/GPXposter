@@ -43,6 +43,10 @@ DEFAULTS = dict(
     title_y_offset=0.0,
     date_y_offset=0.0,
     name_y_offset=0.0,
+    title_x_offset=0.0,
+    date_x_offset=0.0,
+    name_x_offset=0.0,
+    meta_x_offset=0.0,
     km_markers_visible=True,
     km_marker_size=1.0,
     km_marker_color="#000000",
@@ -54,6 +58,8 @@ DEFAULTS = dict(
     finish_dot_color="#ffffff",
     start_label_visible=True,
     finish_label_visible=True,
+    meta_gap_scale=1.0,
+    scale_bar_visible=True,
 )
 
 for k, v in DEFAULTS.items():
@@ -139,10 +145,12 @@ st.session_state.date_scale   = sb.slider("Date",        0.4, 2.0,
                                            value=st.session_state.date_scale,   step=0.05)
 st.session_state.name_scale   = sb.slider("Name",        0.4, 2.0,
                                            value=st.session_state.name_scale,   step=0.05)
-st.session_state.meta_scale   = sb.slider("BIB / Pace",  0.4, 2.0,
-                                           value=st.session_state.meta_scale,   step=0.05)
-st.session_state.time_scale   = sb.slider("Finish time", 0.4, 2.0,
-                                           value=st.session_state.time_scale,   step=0.05)
+st.session_state.meta_scale     = sb.slider("BIB / Pace size", 0.4, 2.0,
+                                             value=st.session_state.meta_scale,     step=0.05)
+st.session_state.meta_gap_scale = sb.slider("BIB / Pace gap (×)", 0.0, 8.0,
+                                             value=st.session_state.meta_gap_scale, step=0.1)
+st.session_state.time_scale     = sb.slider("Finish time", 0.4, 2.0,
+                                             value=st.session_state.time_scale,     step=0.05)
 
 sb.divider()
 
@@ -160,10 +168,29 @@ st.session_state.name_y_offset  = sb.slider("Name offset",   -0.15, 0.15,
 
 sb.divider()
 
+# ── Text X-position ───────────────────────────────────────────────────────────
+sb.header("↔ Text X-Position  (← neg / → pos)")
+st.session_state.title_x_offset = sb.slider("Title offset",    -0.5, 0.5,
+                                              value=st.session_state.title_x_offset, step=0.005,
+                                              format="%.3f")
+st.session_state.date_x_offset  = sb.slider("Date offset",     -0.5, 0.5,
+                                              value=st.session_state.date_x_offset,  step=0.005,
+                                              format="%.3f")
+st.session_state.name_x_offset  = sb.slider("Name offset",     -0.5, 0.5,
+                                              value=st.session_state.name_x_offset,  step=0.005,
+                                              format="%.3f")
+st.session_state.meta_x_offset  = sb.slider("BIB/Pace offset", -0.5, 0.5,
+                                              value=st.session_state.meta_x_offset,  step=0.005,
+                                              format="%.3f")
+
+sb.divider()
+
 # ── Layout ────────────────────────────────────────────────────────────────────
 sb.header("🖼 Layout")
-st.session_state.border_scale = sb.slider("White border width", 0.0, 3.0,
-                                           value=st.session_state.border_scale, step=0.1)
+st.session_state.border_scale     = sb.slider("White border width", 0.0, 3.0,
+                                               value=st.session_state.border_scale, step=0.1)
+st.session_state.scale_bar_visible = sb.checkbox("Show km scale bar",
+                                                   value=st.session_state.scale_bar_visible)
 
 sb.divider()
 
@@ -234,6 +261,10 @@ def _collect_kwargs() -> dict:
         title_y_offset = ss.title_y_offset,
         date_y_offset  = ss.date_y_offset,
         name_y_offset  = ss.name_y_offset,
+        title_x_offset = ss.title_x_offset,
+        date_x_offset  = ss.date_x_offset,
+        name_x_offset  = ss.name_x_offset,
+        meta_x_offset  = ss.meta_x_offset,
         km_markers_visible = ss.km_markers_visible,
         km_marker_size     = ss.km_marker_size,
         km_marker_color    = ss.km_marker_color,
@@ -245,6 +276,8 @@ def _collect_kwargs() -> dict:
         finish_dot_color     = ss.finish_dot_color,
         start_label_visible  = ss.start_label_visible,
         finish_label_visible = ss.finish_label_visible,
+        meta_gap_scale       = ss.meta_gap_scale,
+        scale_bar_visible    = ss.scale_bar_visible,
     )
 
 # Preview resolution scales with zoom slider (base width 500px @ 50%)

@@ -312,6 +312,11 @@ def _render_poster_canvas(
     title_y_offset: float = 0.0,
     date_y_offset:  float = 0.0,
     name_y_offset:  float = 0.0,
+    # X-offsets (fraction of inner width, 0 = default position)
+    title_x_offset: float = 0.0,
+    date_x_offset:  float = 0.0,
+    name_x_offset:  float = 0.0,
+    meta_x_offset:  float = 0.0,
     # KM markers
     km_markers_visible: bool  = True,
     km_marker_size:     float = 1.0,
@@ -327,6 +332,10 @@ def _render_poster_canvas(
     finish_label_visible: bool = True,
     # BIB / Pace text colour
     meta_color: str = "#c8dce8",
+    # BIB / Pace gap multiplier (1.0 = default spacing)
+    meta_gap_scale: float = 1.0,
+    # Scale bar under finish time
+    scale_bar_visible: bool = True,
 ) -> Image.Image:
     """Render the full B2 poster and return a PIL Image."""
     bg_rgb = _hex_rgb(bg_color)
@@ -358,6 +367,12 @@ def _render_poster_canvas(
     _title_y_off = round(title_y_offset * IH)
     _date_y_off  = round(date_y_offset  * IH)
     _name_y_off  = round(name_y_offset  * IH)
+
+    # X-offset in pixels (offset multiplied by IW)
+    _title_x_off = round(title_x_offset * IW)
+    _date_x_off  = round(date_x_offset  * IW)
+    _name_x_off  = round(name_x_offset  * IW)
+    _meta_x_off  = round(meta_x_offset  * IW)
 
     # Font sizes — base × scale multiplier
     title_size = round(title_zone_h * 0.38 * title_scale)
@@ -408,14 +423,14 @@ def _render_poster_canvas(
     block_h      = sum(line_heights) + line_gap * (len(line_heights) - 1)
     ty = title_y + (title_zone_h - block_h) // 2 + _title_y_off
     for i, line in enumerate(title_lines):
-        draw.text((M, ty), line, font=f_title, fill=WHITE)
+        draw.text((M + _title_x_off, ty), line, font=f_title, fill=WHITE)
         ty += line_heights[i] + line_gap
 
     # Date
     if event_date:
         dw = _tw(draw, event_date, f_date)
         dh = _th(draw, event_date, f_date)
-        draw.text((IW - M - dw,
+        draw.text((IW - M - dw + _date_x_off,
                    title_y + (title_zone_h - dh) // 2 + _date_y_off),
                   event_date, font=f_date, fill=WHITE)
 
@@ -432,13 +447,14 @@ def _render_poster_canvas(
         name_gap    = round(name_size * 0.06)
         ny = name_y + round(POSTER_DPI * 0.05) + _name_y_off
         for i, ln in enumerate(name_lines):
-            draw.text((M, ny), ln, font=f_name, fill=WHITE)
+            draw.text((M + _name_x_off, ny), ln, font=f_name, fill=WHITE)
             ny += name_line_h[i] + name_gap
         meta_parts = []
         if bib:  meta_parts.append(f"BIB {bib}")
         if pace: meta_parts.append(f"Pace {pace}")
         if meta_parts:
-            draw.text((M, ny + round(POSTER_DPI * 0.02)),
+            meta_gap = round(POSTER_DPI * 0.02 * meta_gap_scale)
+            draw.text((M + _meta_x_off, ny + meta_gap),
                       "   ".join(meta_parts), font=f_meta, fill=MUTED)
 
     # Finish time
@@ -447,8 +463,9 @@ def _render_poster_canvas(
     draw.text(((IW - tw_px) // 2, time_y_px), finish_time, font=f_time, fill=BLACK)
 
     # Scale bar
-    scale_y_px = time_y_px + time_size + round(POSTER_DPI * 0.07)
-    _scale_bar(draw, track.stats.distance_km, M, scale_y_px, content_w, f_scale, BLACK)
+    if scale_bar_visible:
+        scale_y_px = time_y_px + time_size + round(POSTER_DPI * 0.07)
+        _scale_bar(draw, track.stats.distance_km, M, scale_y_px, content_w, f_scale, BLACK)
 
     # 4. Composite
     canvas_outer.paste(canvas, (BORDER, BORDER))
@@ -481,6 +498,10 @@ def generate_race_poster(
     title_y_offset: float = 0.0,
     date_y_offset:  float = 0.0,
     name_y_offset:  float = 0.0,
+    title_x_offset: float = 0.0,
+    date_x_offset:  float = 0.0,
+    name_x_offset:  float = 0.0,
+    meta_x_offset:  float = 0.0,
     km_markers_visible: bool  = True,
     km_marker_size:     float = 1.0,
     km_marker_color:    str   = "#000000",
@@ -493,6 +514,8 @@ def generate_race_poster(
     start_label_visible:  bool = True,
     finish_label_visible: bool = True,
     meta_color:           str  = "#c8dce8",
+    meta_gap_scale:       float = 1.0,
+    scale_bar_visible:    bool  = True,
 ) -> Path:
     output_path = Path(output_path)
     img = _render_poster_canvas(
@@ -505,6 +528,8 @@ def generate_race_poster(
         time_scale=time_scale, border_scale=border_scale,
         title_y_offset=title_y_offset, date_y_offset=date_y_offset,
         name_y_offset=name_y_offset,
+        title_x_offset=title_x_offset, date_x_offset=date_x_offset,
+        name_x_offset=name_x_offset, meta_x_offset=meta_x_offset,
         km_markers_visible=km_markers_visible,
         km_marker_size=km_marker_size, km_marker_color=km_marker_color,
         start_dot_visible=start_dot_visible,
@@ -514,6 +539,8 @@ def generate_race_poster(
         start_label_visible=start_label_visible,
         finish_label_visible=finish_label_visible,
         meta_color=meta_color,
+        meta_gap_scale=meta_gap_scale,
+        scale_bar_visible=scale_bar_visible,
     )
     suffix = output_path.suffix.lower()
     if suffix == ".pdf":
